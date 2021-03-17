@@ -26,10 +26,14 @@ punt HEAD;
 void stampa(punt testa);
 int primo(int valore); // restituisce 1 se valore è primo, 0 altrimenti
 
-void init(int start);
+int init(int start);
 
 int main(int argc, char* argv[]){
-
+    
+    int ultimo;         // raccoglie l'ultimo valore dalla funzione init
+    int calcolati;      // usato per sapere quanti numeri sono già stati calcolati
+    float density;      // usato per sapere avere un limite massimo di numeri primi che mi devo aspettare
+                        // in un certo intervallo (immaginando che la densità decresca sempre)
 
     // si può modificare starting da terminale (prossima inizializzazione e if)
     int start = starting;
@@ -52,9 +56,11 @@ int main(int argc, char* argv[]){
     HEAD->next = malloc(sizeof(numero));
     HEAD->next->value = 3;
     HEAD->next->next = NULL;
-    init(start);
-    stampa(HEAD);
-    
+    ultimo = init(start);
+    //stampa(HEAD);
+    calcolati = start;
+    density = (float)start / (float)ultimo;
+
     return 0;
 }
 
@@ -91,7 +97,7 @@ void stampa(punt testa){
     #endif
 }
 
-void init(int start){
+int init(int start){
     int i = 2, curr = 5;
     punt pointer;
     pointer = HEAD->next;
@@ -106,7 +112,7 @@ void init(int start){
         curr += 2;
         i++;
     }
-    
+    return(curr -2);
 }
 
 int primo(int valore){
@@ -121,3 +127,4 @@ int primo(int valore){
     
     return 0;
 }
+
