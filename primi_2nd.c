@@ -12,21 +12,47 @@
 // impostazioni di output
 #define WAY "w"  //w per sovrascrivere il file, a per inserire in coda
 #define colonne 5 //colonne di numeri stampate nel file (0 per averli stampati in una riga continua, 1 per averli tutti in colonna)
-//#define OUT "output.txt" //file filnale + relativa directory.
+#define OUT "output2.txt" //file filnale + relativa directory.
 
+
+//************ nuovi tipi definiti ************************
 typedef struct el{
     int value;
     struct el *next;
 } numero;
 typedef numero* punt;
 
-// variabile globale che punterà alla lista dinamica di numeri primi
-punt HEAD;
+typedef struct elem{
+    int start;          // da dove si inizia a controllare
+    int end;            // fino a dove si deve controllare
+    int found;          // numeri primi effettivamente trovati
+    int to_find;        // numeri che voglio trovati, usato solo per concludere
+    punt first;         // indirizzo del primo 'numero' da riempire
+    punt attachment;    // indirizzo dell'ultimo nodo a cui mi devo attaccare
+} check_values;
 
+
+//************ variabili globali **************************
+
+punt HEAD;              // testa della lista dinamica contenente i numeri cercati
+sem_t stop;             // >1 se uno o più thread si aspettano nuovi valori
+sem_t go[nthread];      // dà il via al thread appena inizializzato
+short ready[nthread];   // comunica quali thread si aspettano i nuovi valori
+short exit_val;             // 1 se i thread devono uscire
+
+//************ funzioni ***********************************
+// restituisce 1 se valore è primo, 0 altrimenti
+short primo(int valore);
 void stampa(punt testa);
-int primo(int valore); // restituisce 1 se valore è primo, 0 altrimenti
 
+// calcola i primi start numeri primi
 int init(int start);
+
+// funzioni eseguite da thread
+/*// organizza i thread che controllano i numeri
+void* handler(void* arg);*/
+// controllano se i numeri sono primi e costruiscono la lista dinamica
+void* checkers(void* arg);
 
 int main(int argc, char* argv[]){
     
@@ -34,6 +60,7 @@ int main(int argc, char* argv[]){
     int calcolati;      // usato per sapere quanti numeri sono già stati calcolati
     float density;      // usato per sapere avere un limite massimo di numeri primi che mi devo aspettare
                         // in un certo intervallo (immaginando che la densità decresca sempre)
+    check_values thread[nthread]; //array che conterrà i valori necessari ai thread
 
     // si può modificare starting da terminale (prossima inizializzazione e if)
     int start = starting;
@@ -47,8 +74,6 @@ int main(int argc, char* argv[]){
                     j ++;
                 }
             }
-                
-                
     }
     
     HEAD = malloc(sizeof(numero));
@@ -57,10 +82,9 @@ int main(int argc, char* argv[]){
     HEAD->next->value = 3;
     HEAD->next->next = NULL;
     ultimo = init(start);
-    //stampa(HEAD);
+    stampa(HEAD);
     calcolati = start;
     density = (float)start / (float)ultimo;
-
     return 0;
 }
 
@@ -112,10 +136,10 @@ int init(int start){
         curr += 2;
         i++;
     }
-    return(curr -2);
+    return(curr -2); // ultimo valore calcolato
 }
 
-int primo(int valore){
+short primo(int valore){
     punt curr = HEAD->next;
     while(curr != NULL && valore % curr->value != 0){
         if(valore < curr->value * curr->value)
