@@ -5,8 +5,8 @@
 #include <unistd.h>
 
 // impostazioni di funzionamento
-#define nthread 8 // che controllano se un numero è primo o meno
-#define MAX 100000 // numeri primi desiderati
+#define nthread 1 // che controllano se un numero è primo o meno
+#define MAX 1000 // numeri primi desiderati
 #define starting 100 // inizializzazione della lista con starting numeri primi, 
                      // non in parallelo e modificabile da terminale dalla chiamata
 
@@ -30,7 +30,7 @@ typedef struct elem{
     int end;            // fino a dove si deve controllare
     int found;          // numeri primi effettivamente trovati
     int to_find;        // numeri che voglio trovati, usato solo per concludere
-    int expected;       // numeri che mi aspetto di trovare
+    int expect;         // numeri che mi aspetto di trovare
     punt first;         // indirizzo del primo 'numero' da riempire
     punt attachment;    // indirizzo dell'ultimo nodo a cui mi devo attaccare
     pthread_t th_handle;
@@ -65,7 +65,7 @@ int main(int argc, char* argv[]){
 
     punt ultimo;        // raccoglie l'ultimo "numero" dalla funzione init
     int calcolati;      // usato per sapere quanti numeri sono già stati calcolati
-    int total_expected; // usato per tenere traccia dei numeri che mi aspetto di ottenere
+    int expected;         // usato per tenere traccia dei numeri che mi aspetto di ottenere
     int da;             // tiene conto dello starting point di ogni thread
     int chunk_size;     // usato per sapere quanti numeri sono stati assegnati al th e condizione di uscita dal while
     float density;      // usato per sapere avere un limite massimo di numeri primi che mi devo aspettare
@@ -96,10 +96,13 @@ int main(int argc, char* argv[]){
     // funzione init e ulteriori inizializzazioni
     ultimo = init(start);
     limite = ultimo->value;
+    ultimo->next = malloc(sizeof(numero));
+    ultimo = ultimo->next;
+
     da = limite + 2;
     calcolati = start;
-    total_expected = start;
-    density = (float)start / (float)ultimo->value;
+    expected = start;
+    density = (float)start / (float)limite;
     exit_val = 0;
 
     //************ calcolo la maggior parte dei numeri ***********
@@ -121,7 +124,7 @@ int main(int argc, char* argv[]){
         ready[i] = 0;
         // se il thread non aveva ancora lavorato salto la raccolta dei dati che ha elaborato
         if(thread[i].found != 0){
-            total_expected = total_expected - thread[i].expected + thread[i].found;
+            expected = expected - thread[i].expect + thread[i].found;
             calcolati += thread[i].found;
             float new_den = (float)thread[i].found / (float) (thread[i].end - thread[i].start);
             density = min(density, new_den);
@@ -129,13 +132,29 @@ int main(int argc, char* argv[]){
 
         //*********** inizio settaggio valori utili al thread *************
         thread[i].updating = 0;
-        if(y % nthread == 0)
-            thread[i].updating = 1;
+        if((y+1) % nthread == 0)        // chi controlla i valori più grandi aggiorna limite
+            thread[i].updating = 1;     // può creare problemi se nthread > numero di core
         
-        
+        if(y % nthread == 0){
+            chunk_size = (int) min(((float)(MAX - expected))/(density * nthread), ((float)(limite*(limite-1))/nthread));
+            chunk_size -= chunk_size % 2;
+        }
+        thread[i].start = da;
+        thread[i].end = da + chunk_size;
+        thread[i].found = 0;
+        thread[i].to_find = 0;
+        thread[i].expect = (int) ((float)chunk_size / density);
+        thread[i].first = ultimo;
+        thread[i].attachment = malloc(sizeof(numero));
+        printf("DA: %d\n", thread[i].end);
+        sem_post(go + i);
+
+        ultimo = thread[i].attachment;
+        expected += thread[i].expect;
+        da += chunk_size + 2;
         y++;
     }
-    while(MAX - total_expected < starting);   // start può essere cambiato da terminale, starting no
+    while(MAX - expected < starting);   // start può essere cambiato da terminale, starting no
     
     // raccolta thread non necessari
     exit_val = 1;
@@ -241,22 +260,37 @@ void* checker(void* arg){
     punt corrente = NULL;
 
     printf("thread %d pronto\n", valori.number);
+    printf("start = %d\n", valori.start);
+        printf("end = %d\n", valori.end);
+        printf("found = %d\n", valori.found);
+        printf("to_find = %d\n", valori.to_find);
+        printf("expect = %d\n", valori.expect);
     
     while(1){
+        valori = *((check_values*) arg);
         ready[valori.number] = 1;
         sem_post(&stop);
         sem_wait(go+valori.number);
-        if(exit_val == 0)
+        printf("thread %d pronto\n", valori.number);
+        printf("start = %d\n", valori.start);
+        printf("end = %d\n", valori.end);
+        printf("found = %d\n", valori.found);
+        printf("to_find = %d\n", valori.to_find);
+        printf("expect = %d\n", valori.expect);
+
+
+        if(exit_val)
             return NULL;
 
         corrente = valori.first;
         // mi serve protezione rispetto
-        if(valori.to_find == 0)
-            valori.to_find = valori.end;    // ho bisogno di un valore assurdamente grande
-        else
-            valori.end = valori.start + MAX; // ho bisogno di un valore assurdamente grande
+        //if(valori.to_find == 0)
+        //    valori.to_find = valori.end;    // ho bisogno di un valore assurdamente grande
+        //else
+        //    valori.end = valori.start + MAX; // ho bisogno di un valore assurdamente grande
         
         curr = valori.start;
+        printf("hi, %d, da: %d\n", valori.number, curr);
         
         while(1){
             if(valori.to_find == 0){
@@ -279,13 +313,24 @@ void* checker(void* arg){
             // won't work anyway unless i fix pointer situation
 
             if(ans == 1){
+                // aggiorno limite di volta in volta nel non finisca per primo questo th
                 if(valori.updating)
                     limite = curr;
+                
+                // Aspetto un ciclo per far scorrere current,
+                // per poter attaccare attachment, senza problemi, dopo
+                if(valori.found){
+                    corrente->next = malloc(sizeof(numero));
+                    corrente->next->value = curr;
+                    corrente->next->next = NULL;
+                    corrente = corrente->next;
+                }
+                else{ // se ho trovato 0 numeri primi
+                    corrente->value = curr;
+                    corrente->next = NULL;
+                }
+
                 valori.found += 1;
-                corrente->next = malloc(sizeof(numero));
-                corrente = corrente->next;
-                corrente->value = curr;
-                corrente->next = NULL;
             }
 
             curr += 2;
@@ -293,8 +338,8 @@ void* checker(void* arg){
         
         // aggiorno limite = max(curr-2, limite)
         //limite = (int) -1 * min(-1. * (float) (curr - 2), -1.* (float) limite);
+        //free(corrente->next);
         
-        free(corrente->next);
         corrente->next = valori.attachment;
     }
     return NULL;
