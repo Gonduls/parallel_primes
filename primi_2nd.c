@@ -104,7 +104,7 @@ int main(int argc, char* argv[]){
     expected = start;
     density = (float)start / (float)limite;
     exit_val = 0;
-
+    printf("density: %f\n", density);
     //************ calcolo la maggior parte dei numeri ***********
     // creazione dei thread
     for(i=0; i<nthread;i++){
@@ -140,18 +140,18 @@ int main(int argc, char* argv[]){
             chunk_size -= chunk_size % 2;
         }
         thread[i].start = da;
-        thread[i].end = da + chunk_size;
+        thread[i].end = da + chunk_size -2;
         thread[i].found = 0;
         thread[i].to_find = 0;
-        thread[i].expect = (int) ((float)chunk_size / density);
+        thread[i].expect = (int) ((float)chunk_size * density);
         thread[i].first = ultimo;
         thread[i].attachment = malloc(sizeof(numero));
-        printf("DA: %d\n", thread[i].end);
+        printf("chunk_size: %d, %.1f\n", chunk_size, (float)chunk_size * density);
         sem_post(go + i);
 
         ultimo = thread[i].attachment;
         expected += thread[i].expect;
-        da += chunk_size + 2;
+        da += chunk_size;
         y++;
     }
     while(MAX - expected < starting);   // start può essere cambiato da terminale, starting no
@@ -178,7 +178,7 @@ int main(int argc, char* argv[]){
         i++;
     calcolati += thread[i].found;
     
-    
+    stampa(HEAD);
     return 0;
 }
 
@@ -254,50 +254,50 @@ float min(float a, float b){
 }
 
 void* checker(void* arg){
-    check_values valori = *((check_values*) arg);
+    check_values* valori = ((check_values*) arg);
     int curr;
     short ans;
     punt corrente = NULL;
 
-    printf("thread %d pronto\n", valori.number);
-    printf("start = %d\n", valori.start);
-        printf("end = %d\n", valori.end);
-        printf("found = %d\n", valori.found);
-        printf("to_find = %d\n", valori.to_find);
-        printf("expect = %d\n", valori.expect);
+    //printf("thread %d pronto\n", valori->number);
+    //printf("start = %d\n", valori->start);
+    //    printf("end = %d\n", valori->end);
+    //    printf("found = %d\n", valori->found);
+    //    printf("to_find = %d\n", valori->to_find);
+    //    printf("expect = %d\n", valori->expect);
     
     while(1){
-        valori = *((check_values*) arg);
-        ready[valori.number] = 1;
+        ready[valori->number] = 1;
         sem_post(&stop);
-        sem_wait(go+valori.number);
-        printf("thread %d pronto\n", valori.number);
-        printf("start = %d\n", valori.start);
-        printf("end = %d\n", valori.end);
-        printf("found = %d\n", valori.found);
-        printf("to_find = %d\n", valori.to_find);
-        printf("expect = %d\n", valori.expect);
-
+        sem_wait(go+valori->number);
+        printf("thread %d pronto\n", valori->number);
+        printf("start = %d\n", valori->start);
+        printf("end = %d\n", valori->end);
+        printf("found = %d\n", valori->found);
+        printf("to_find = %d\n", valori->to_find);
+        printf("expect = %d\n", valori->expect);
+        return NULL;
+//
 
         if(exit_val)
             return NULL;
 
-        corrente = valori.first;
+        corrente = valori->first;
         // mi serve protezione rispetto
-        //if(valori.to_find == 0)
-        //    valori.to_find = valori.end;    // ho bisogno di un valore assurdamente grande
+        //if(valori->to_find == 0)
+        //    valori->to_find = valori->end;    // ho bisogno di un valore assurdamente grande
         //else
-        //    valori.end = valori.start + MAX; // ho bisogno di un valore assurdamente grande
+        //    valori->end = valori->start + MAX; // ho bisogno di un valore assurdamente grande
         
-        curr = valori.start;
-        printf("hi, %d, da: %d\n", valori.number, curr);
+        curr = valori->start;
+        printf("hi, %d, da: %d\n", valori->number, curr);
         
         while(1){
-            if(valori.to_find == 0){
-                if(curr > valori.end)
+            if(valori->to_find == 0){
+                if(curr > valori->end)
                     break;
             }
-            else if(valori.found == valori.to_find){
+            else if(valori->found == valori->to_find){
                 //free(corrente->next);
                 //corrente->next = NULL;
                 return NULL;
@@ -314,12 +314,12 @@ void* checker(void* arg){
 
             if(ans == 1){
                 // aggiorno limite di volta in volta nel non finisca per primo questo th
-                if(valori.updating)
+                if(valori->updating)
                     limite = curr;
                 
                 // Aspetto un ciclo per far scorrere current,
                 // per poter attaccare attachment, senza problemi, dopo
-                if(valori.found){
+                if(valori->found){
                     corrente->next = malloc(sizeof(numero));
                     corrente->next->value = curr;
                     corrente->next->next = NULL;
@@ -330,7 +330,7 @@ void* checker(void* arg){
                     corrente->next = NULL;
                 }
 
-                valori.found += 1;
+                valori->found += 1;
             }
 
             curr += 2;
@@ -340,7 +340,7 @@ void* checker(void* arg){
         //limite = (int) -1 * min(-1. * (float) (curr - 2), -1.* (float) limite);
         //free(corrente->next);
         
-        corrente->next = valori.attachment;
+        corrente->next = valori->attachment;
     }
     return NULL;
 }
