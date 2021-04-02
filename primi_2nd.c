@@ -5,8 +5,8 @@
 #include <unistd.h>
 
 // impostazioni di funzionamento
-#define nthread 8 // che controllano se un numero è primo o meno
-#define MAX 60000 // numeri primi desiderati
+#define nthread 1 // che controllano se un numero è primo o meno
+#define MAX 10000000 // numeri primi desiderati
 #define starting 100 // inizializzazione della lista con starting numeri primi, 
                      // non in parallelo e modificabile da terminale dalla chiamata
 
@@ -140,8 +140,10 @@ int main(int argc, char* argv[]){
         
         if(y % nthread == 0){
             printf("a: %f\n", ((float)(MAX - expected))/(density * nthread));
-            printf("b: %f\n", ((float)(limite*(limite-1))/nthread));
+            printf("b: %f, limite:%d\n", ((float)(limite*(limite-1))/nthread), limite);
             chunk_size = (int) min(((float)(MAX - expected))/(density * nthread), ((float)(limite*(limite-1))/nthread));
+            if (chunk_size<0)
+                chunk_size = (int) ((float)(MAX - expected))/(density * nthread);
             chunk_size -= chunk_size % 2;
         }
         printf("chunk_size: %d\n", chunk_size);
@@ -159,8 +161,10 @@ int main(int argc, char* argv[]){
         expected += thread[i].expect;
         da += chunk_size;
         y++;
+        if((chunk_size < start && (y)%nthread == 0) || expected > MAX)
+            break;
     }
-    while(chunk_size > start && (y)%nthread == 0);   // start può essere cambiato da terminale, starting no
+    while(1);   // start può essere cambiato da terminale, starting no
     
     //printf("Henlo %d, %d\n", chunk_size, start);
     // raccolta thread non necessari
