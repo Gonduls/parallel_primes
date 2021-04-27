@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 // impostazioni di funzionamento
-#define nthread 1 // che controllano se un numero è primo o meno
+#define nthread 8 // che controllano se un numero è primo o meno
 #define MAX 10000000 // numeri primi desiderati
 #define starting 100 // inizializzazione della lista con starting numeri primi, 
                      // non in parallelo e modificabile da terminale dalla chiamata
@@ -94,6 +94,11 @@ int main(int argc, char* argv[]){
     HEAD->next->next = NULL;
     
     // funzione init e ulteriori inizializzazioni
+    if(nthread == 0 || nthread == 1){
+        init(MAX);
+        stampa(HEAD);
+        return 0;
+    }
     ultimo = init(start);
     limite = ultimo->value;
     ultimo->next = malloc(sizeof(numero));
