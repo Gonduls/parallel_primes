@@ -1,10 +1,9 @@
 numprimi.c
-primith.c
 threads.c
 
 primith
 try
 *.txt
 
-Gadioli/
+private/
 .vscode
