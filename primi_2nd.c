@@ -8,7 +8,7 @@
 #define nthread 8 // che controllano se un numero è primo o meno
 #define MAX 10000000 // numeri primi desiderati
 #define starting 100 // inizializzazione della lista con starting numeri primi, 
-                     // non in parallelo e modificabile da terminale dalla chiamata
+                     // non in parallelo. Modificabile da terminale dalla chiamata
 
 // impostazioni di output
 #define WAY "w"  //w per sovrascrivere il file, a per inserire in coda
@@ -54,9 +54,6 @@ float min(float a, float b);
 // calcola i primi start numeri primi
 punt init(int start);
 
-// funzioni eseguite da thread
-/*// organizza i thread che controllano i numeri
-void* handler(void* arg);*/
 // controllano se i numeri sono primi e costruiscono la lista dinamica
 void* checker(void* arg);
 
@@ -65,7 +62,7 @@ int main(int argc, char* argv[]){
 
     punt ultimo;        // raccoglie l'ultimo "numero" dalla funzione init
     int calcolati;      // usato per sapere quanti numeri sono già stati calcolati
-    int expected;         // usato per tenere traccia dei numeri che mi aspetto di ottenere
+    int expected;       // usato per tenere traccia dei numeri che mi aspetto di ottenere
     int da;             // tiene conto dello starting point di ogni thread
     int chunk_size;     // usato per sapere quanti numeri sono stati assegnati al th e condizione di uscita dal while
     float density;      // usato per sapere avere un limite massimo di numeri primi che mi devo aspettare
@@ -109,7 +106,7 @@ int main(int argc, char* argv[]){
     expected = start;
     density = (float)start / (float)limite;
     exit_val = 0;
-    //printf("density: %f\n", density);
+
     //************ calcolo la maggior parte dei numeri ***********
     // creazione dei thread
     for(i=0; i<nthread;i++){
@@ -121,13 +118,11 @@ int main(int argc, char* argv[]){
     // loop principale
     y = 0;
     do{
-        //printf("Hi\n");
         sem_wait(&stop);
         // individuo il thread che ha fatto post su stop
         i = 0;
         while(ready[i] == 0)
             i++;
-        //printf("%d\n", i);
         ready[i] = 0;
         // se il thread non aveva ancora lavorato salto la raccolta dei dati che ha elaborato
         if(thread[i].found != 0){
@@ -141,17 +136,17 @@ int main(int argc, char* argv[]){
         thread[i].updating = 0;
         if((y+1) % nthread == 0)        // chi controlla i valori più grandi aggiorna limite
             thread[i].updating = 1;     // può creare problemi se nthread > numero di core
-        printf("y = %d\n", y);
         
         if(y % nthread == 0){
-            printf("a: %f\n", ((float)(MAX - expected))/(density * nthread));
-            printf("b: %f, limite:%d\n", ((float)(limite*(limite-1))/nthread), limite);
+            printf("\nCiclo #%d\n", y);
+            printf("limite per densità: %.3f\n", ((float)(MAX - expected))/(density * nthread));
+            printf("limite per numero più grande calcolato: %.3f, numero più grande calcolato: %d\n", ((float)(limite*(limite-1))/nthread), limite);
             chunk_size = (int) min(((float)(MAX - expected))/(density * nthread), ((float)(limite*(limite-1))/nthread));
             if (chunk_size<0)
                 chunk_size = (int) ((float)(MAX - expected))/(density * nthread);
             chunk_size -= chunk_size % 2;
+            printf("chunk_size: %d\n", chunk_size);
         }
-        printf("chunk_size: %d\n", chunk_size);
         thread[i].start = da;
         thread[i].end = da + chunk_size -2;
         thread[i].found = 0;
@@ -159,7 +154,6 @@ int main(int argc, char* argv[]){
         thread[i].expect = (int) ((float)chunk_size * density);
         thread[i].first = ultimo;
         thread[i].attachment = malloc(sizeof(numero));
-        //printf("chunk_size: %d, density %.1f\n", chunk_size, (float)chunk_size * density);
         sem_post(go + i);
 
         ultimo = thread[i].attachment;
@@ -171,9 +165,7 @@ int main(int argc, char* argv[]){
     }
     while(1);   // start può essere cambiato da terminale, starting no
     
-    //printf("Henlo %d, %d\n", chunk_size, start);
     // raccolta thread non necessari
-    //exit_val = 1;
     for (y=0; y<nthread - 1; y++){
 
         sem_wait(&stop);
@@ -187,7 +179,7 @@ int main(int argc, char* argv[]){
         sem_post(go + i);
     }
     
-    // calcolo degli ultimi valori necessari
+    //************ calcolo degli ultimi valori necessari ***********
     exit_val = 0;
     // individuo l'ultimo thread rimasto
     i = 0;
@@ -208,7 +200,6 @@ int main(int argc, char* argv[]){
     pthread_join (thread[i].th_handle, NULL);
 
     stampa(HEAD);
-    //printf("\n\n");
     return 0;
 }
 
@@ -288,38 +279,20 @@ void* checker(void* arg){
     int curr;
     short ans;
     punt corrente = NULL;
-
-    //printf("thread %d pronto\n", valori->number);
-    //printf("start = %d\n", valori->start);
-    //    printf("end = %d\n", valori->end);
-    //    printf("found = %d\n", valori->found);
-    //    printf("to_find = %d\n", valori->to_find);
-    //    printf("expect = %d\n", valori->expect);
     
     while(1){
-        //int i =  valori->number;
         ready[valori->number] = 1;
-        //printf("no.1\n");
         sem_post(&stop);
         sem_wait(&(go[valori->number]));
-        //printf("thread %d pronto\n", i, valori->number);
-        //printf("%d, start = %d\n", i, valori->start);
-        //printf("%d, end = %d\n", i, valori->end);
-        //printf("%d, found = %d\n", i, valori->found);
-        //printf("%d, to_find = %d\n", i, valori->to_find);
-        //printf("%d, expect = %d\n", i, valori->expect);
-        //printf("%d, updating = %d\n", i, valori->updating);
-        //return NULL;
 
 
-        if(valori->found == -1){//exit_val){
+        if(valori->found == -1){
             printf("exiting\n");
             return NULL;
         }
         corrente = valori->first;
 
         curr = valori->start;
-        //printf("hi, %d, da: %d\n", valori->number, curr);
         
         while(1){
             if(valori->to_find == 0){
@@ -327,8 +300,6 @@ void* checker(void* arg){
                     break;
             }
             else if(valori->found == valori->to_find){
-                //free(corrente->next);
-                //corrente->next = NULL;
                 sem_post(&stop);
                 return NULL;
             }
@@ -366,11 +337,6 @@ void* checker(void* arg){
 
             curr += 2;
         }
-        //printf("no\n");
-        // aggiorno limite = max(curr-2, limite)
-        //limite = (int) -1 * min(-1. * (float) (curr - 2), -1.* (float) limite);
-        //free(corrente->next);
-        
         corrente->next = valori->attachment;
     }
     return NULL;
