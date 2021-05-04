@@ -7,8 +7,8 @@
 // impostazioni di funzionamento
 #define nthread 8 // che controllano se un numero è primo o meno
 #define MAX 10000000 // numeri primi desiderati
-#define starting 100 // inizializzazione della lista con starting numeri primi, 
-                     // non in parallelo. Modificabile da terminale dalla chiamata
+#define starting 100000 // inizializzazione della lista con starting numeri primi, 
+                        // non in parallelo. Modificabile da terminale dalla chiamata
 
 // impostazioni di output
 #define WAY "w"  //w per sovrascrivere il file, a per inserire in coda
@@ -117,7 +117,7 @@ int main(int argc, char* argv[]){
 
     // loop principale
     y = 0;
-    do{
+    while(1){
         sem_wait(&stop);
         // individuo il thread che ha fatto post su stop
         i = 0;
@@ -138,14 +138,14 @@ int main(int argc, char* argv[]){
             thread[i].updating = 1;     // può creare problemi se nthread > numero di core
         
         if(y % nthread == 0){
-            printf("\nCiclo #%d\n", y);
+            printf("Ciclo #%d\n", y);
             printf("limite per densità: %.3f\n", ((float)(MAX - expected))/(density * nthread));
             printf("limite per numero più grande calcolato: %.3f, numero più grande calcolato: %d\n", ((float)(limite*(limite-1))/nthread), limite);
             chunk_size = (int) min(((float)(MAX - expected))/(density * nthread), ((float)(limite*(limite-1))/nthread));
             if (chunk_size<0)
                 chunk_size = (int) ((float)(MAX - expected))/(density * nthread);
             chunk_size -= chunk_size % 2;
-            printf("chunk_size: %d\n", chunk_size);
+            printf("chunk_size: %d\n\n", chunk_size);
         }
         thread[i].start = da;
         thread[i].end = da + chunk_size -2;
@@ -160,10 +160,9 @@ int main(int argc, char* argv[]){
         expected += thread[i].expect;
         da += chunk_size;
         y++;
-        if((chunk_size < start && (y)%nthread == 0) || expected > MAX)
+        if((chunk_size < 1000 && (y)%nthread == 0) || expected > MAX) //al posto di 1000 va start
             break;
     }
-    while(1);   // start può essere cambiato da terminale, starting no
     
     // raccolta thread non necessari
     for (y=0; y<nthread - 1; y++){
