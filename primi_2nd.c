@@ -1,12 +1,12 @@
 #include <stdio.h>
-#include <pthread.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <semaphore.h>
-#include <unistd.h>
+#include <unistd.h> // just for sleep function, but never used, considering removing it
 
 // impostazioni di funzionamento
-#define nthread 8 // che controllano se un numero è primo o meno
-#define MAX 10000000 // numeri primi desiderati
+#define nthread 9 // che controllano se un numero è primo o meno
+#define MAX 531441 // numeri primi desiderati
 #define starting 100000 // inizializzazione della lista con starting numeri primi, 
                         // non in parallelo. Modificabile da terminale dalla chiamata
 
@@ -177,7 +177,7 @@ int main(int argc, char* argv[]){
         thread[i].found = -1;
         sem_post(go + i);
     }
-    
+    printf("hi\n");
     //************ calcolo degli ultimi valori necessari ***********
     exit_val = 0;
     // individuo l'ultimo thread rimasto
@@ -300,6 +300,7 @@ void* checker(void* arg){
             }
             else if(valori->found == valori->to_find){
                 sem_post(&stop);
+                printf("exiting_2\n");
                 return NULL;
             }
 
@@ -311,7 +312,6 @@ void* checker(void* arg){
                 sleep(1);
                 ans = primo(curr);
             }
-            // won't work anyway unless i fix pointer situation
 
             if(ans == 1){
                 // aggiorno limite di volta in volta nel non finisca per primo questo th
@@ -338,5 +338,6 @@ void* checker(void* arg){
         }
         corrente->next = valori->attachment;
     }
+    printf("exiting_3\n");
     return NULL;
 }
