@@ -5,9 +5,9 @@
 #include <unistd.h> // just for sleep function, but never used, considering removing it
 
 // impostazioni di funzionamento
-#define nthread 9 // che controllano se un numero è primo o meno
-#define MAX 531441 // numeri primi desiderati
-#define starting 100000 // inizializzazione della lista con starting numeri primi, 
+#define nthread 4 // che controllano se un numero è primo o meno
+#define MAX 10000000 // numeri primi desiderati
+#define starting 1000 // inizializzazione della lista con starting numeri primi, 
                         // non in parallelo. Modificabile da terminale dalla chiamata
 
 // impostazioni di output
@@ -177,7 +177,7 @@ int main(int argc, char* argv[]){
         thread[i].found = -1;
         sem_post(go + i);
     }
-    printf("hi\n");
+    //printf("hi\n");
     //************ calcolo degli ultimi valori necessari ***********
     exit_val = 0;
     // individuo l'ultimo thread rimasto
@@ -198,7 +198,7 @@ int main(int argc, char* argv[]){
     exit_val = 1;
     pthread_join (thread[i].th_handle, NULL);
 
-    stampa(HEAD);
+    //stampa(HEAD);
     return 0;
 }
 
@@ -300,6 +300,7 @@ void* checker(void* arg){
             }
             else if(valori->found == valori->to_find){
                 sem_post(&stop);
+                printf("Last value found: %d\n", curr - 2);
                 printf("exiting_2\n");
                 return NULL;
             }
